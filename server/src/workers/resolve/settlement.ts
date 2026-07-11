@@ -47,7 +47,7 @@ export function phaseAction(phaseCode: number): PhaseAction {
 export const MARKET = {
   MATCH_RESULT: 0, // 1X2, outcome_count 3
   OVER_UNDER: 1, // outcome_count 2
-  CORRECT_SCORE: 2, // outcome_count 36 (6x6 with a 5+ bucket)
+  CORRECT_SCORE: 2, // folded exact-score grid; cap travels in market_param
 } as const;
 
 export interface Score {
@@ -55,12 +55,12 @@ export interface Score {
   away: number;
 }
 
-/** Correct-score fold: goals >=5 collapse into a "5+" bucket. Index 0..35. */
-export const CS_MAX = 5;
-export function correctScoreIndex(home: number, away: number): number {
-  const h = Math.min(home, CS_MAX);
-  const a = Math.min(away, CS_MAX);
-  return h * (CS_MAX + 1) + a;
+/** Ranktasy v2 grid fold: goals >=4 collapse into a "4+" bucket by default. */
+export const DEFAULT_CS_CAP = 4;
+export function correctScoreIndex(home: number, away: number, cap = DEFAULT_CS_CAP): number {
+  const h = Math.min(home, cap);
+  const a = Math.min(away, cap);
+  return h * (cap + 1) + a;
 }
 
 /**
@@ -68,7 +68,8 @@ export function correctScoreIndex(home: number, away: number): number {
  *  - MATCH_RESULT: 0 home, 1 draw, 2 away
  *  - OVER_UNDER:   0 under, 1 over. market_param is the line * 10 (2.5 -> 25).
  *                  Half-integer lines never push.
- *  - CORRECT_SCORE: folded (home,away) index, see correctScoreIndex.
+ *  - CORRECT_SCORE: folded (home,away) index. market_param is the cap
+ *                   (Ranktasy v2 uses 4 => 0,1,2,3,4+).
  */
 export function winningOutcome(marketType: number, marketParam: number, score: Score): number {
   switch (marketType) {
@@ -82,7 +83,7 @@ export function winningOutcome(marketType: number, marketParam: number, score: S
       return total > line ? 1 : 0;
     }
     case MARKET.CORRECT_SCORE:
-      return correctScoreIndex(score.home, score.away);
+      return correctScoreIndex(score.home, score.away, marketParam > 0 ? marketParam : DEFAULT_CS_CAP);
     default:
       throw new Error(`unknown market_type ${marketType}`);
   }

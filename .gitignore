@@ -27,3 +27,6 @@ npm-debug.log*
 
 # Misc
 *.tsbuildinfo
+
+# Local pool mirror / runtime data
+server/data/

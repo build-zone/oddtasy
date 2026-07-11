@@ -15,7 +15,7 @@ import {
   correctScoreIndex,
   regulationScore,
   MARKET,
-} from "./settlement";
+} from "./settlement.js";
 
 test("phase codes route to the right settlement action", () => {
   for (const c of [5, 10, 13]) assert.equal(phaseAction(c), "resolve"); // F, FET, FPE
@@ -38,14 +38,18 @@ test("over/under settles against the line (param = line*10)", () => {
   assert.equal(winningOutcome(MARKET.OVER_UNDER, 35, { home: 2, away: 1 }), 0); // total 3, under
 });
 
-test("correct-score folds the 5+ tail", () => {
-  assert.equal(correctScoreIndex(2, 1), 2 * 6 + 1); // 13
+test("correct-score folds the 4+ tail by default", () => {
+  assert.equal(correctScoreIndex(2, 1), 2 * 5 + 1); // 11
   assert.equal(correctScoreIndex(0, 0), 0);
-  assert.equal(correctScoreIndex(7, 0), 5 * 6 + 0); // 7 folds to 5 -> 30
-  assert.equal(correctScoreIndex(3, 9), 3 * 6 + 5); // 9 folds to 5 -> 23
+  assert.equal(correctScoreIndex(7, 0), 4 * 5 + 0); // 7 folds to 4+ -> 20
+  assert.equal(correctScoreIndex(3, 9), 3 * 5 + 4); // 9 folds to 4+ -> 19
   assert.equal(
     winningOutcome(MARKET.CORRECT_SCORE, 0, { home: 2, away: 2 }),
     correctScoreIndex(2, 2),
+  );
+  assert.equal(
+    winningOutcome(MARKET.CORRECT_SCORE, 5, { home: 7, away: 0 }),
+    correctScoreIndex(7, 0, 5),
   );
 });
 

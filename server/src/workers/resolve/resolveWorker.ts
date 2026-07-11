@@ -12,8 +12,8 @@
  * we avoid relying on caught errors by checking status up front.
  */
 import { PublicKey } from "@solana/web3.js";
-import { PoolProgram, type ChainStatus } from "./poolProgram";
-import { phaseAction, winningOutcome, type Score } from "./settlement";
+import { PoolProgram, type ChainStatus } from "./poolProgram.js";
+import { phaseAction, winningOutcome, type Score } from "./settlement.js";
 
 export interface PoolRow {
   id: string; // uuid
@@ -139,5 +139,5 @@ export async function retryStuckFixture(
 }
 
 // Re-export so callers import treasury/config-aware helpers from one place.
-export { PoolProgram } from "./poolProgram";
+export { PoolProgram } from "./poolProgram.js";
 export type { PublicKey };
