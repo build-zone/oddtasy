@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { config } from "../config.js";
+import { broadcastPoolUpdate } from "../chat/hub.js";
 import type { EntryRecord, EntryStatus, PoolRecord, PoolStatus, StoreData } from "./types.js";
 
 const USDC_UNIT = 1_000_000;
@@ -167,6 +168,40 @@ export function createEntry(poolId: string, input: CreateEntryInput): EntryRecor
   return clone(entry);
 }
 
+/** Records a confirmed on-chain signature reported back by the client. */
+export function recordTxSignature(
+  poolId: string,
+  kind: "create" | "enter" | "claim" | "refund",
+  signature: string,
+  wallet?: string,
+): boolean {
+  const data = readStore();
+  const pool = data.pools.find((p) => p.id === poolId);
+  if (!pool) return false;
+  const at = nowIso();
+  if (kind === "create") {
+    pool.createTxSignature = signature;
+    pool.updatedAt = at;
+    // hosting bundles the host's own bet into the same transaction
+    const hostEntry = data.entries.find(
+      (e) => e.poolId === poolId && e.wallet === pool.hostWallet && !e.enterTxSignature,
+    );
+    if (hostEntry) {
+      hostEntry.enterTxSignature = signature;
+      hostEntry.updatedAt = at;
+    }
+    writeStore(data);
+    return true;
+  }
+  const entry = data.entries.find((e) => e.poolId === poolId && e.wallet === wallet);
+  if (!entry) return false;
+  if (kind === "enter") entry.enterTxSignature = signature;
+  else entry.claimTxSignature = signature;
+  entry.updatedAt = at;
+  writeStore(data);
+  return true;
+}
+
 export function finalizingPoolsForFixture(fixtureId: string | number): Promise<PoolRecord[]> {
   const id = Number(fixtureId);
   return Promise.resolve(
@@ -180,6 +215,7 @@ function setPoolStatus(poolId: string, patch: Partial<PoolRecord>): PoolRecord |
   if (!pool) return undefined;
   Object.assign(pool, patch, { updatedAt: nowIso() });
   writeStore(data);
+  broadcastPoolUpdate(poolId, "status");
   return clone(pool);
 }
 
@@ -205,6 +241,7 @@ export function markResolved(
   pool.updatedAt = nowIso();
   updateEntryStatuses(data, poolId, (entry) => (entry.prediction === winningOutcome ? "won" : "lost"));
   writeStore(data);
+  broadcastPoolUpdate(poolId, "status");
   return Promise.resolve();
 }
 
@@ -219,6 +256,7 @@ export function markVoided(poolId: string, winningOutcome: number, txSig: string
   pool.updatedAt = nowIso();
   updateEntryStatuses(data, poolId, () => "refunded");
   writeStore(data);
+  broadcastPoolUpdate(poolId, "status");
   return Promise.resolve();
 }
 
@@ -231,6 +269,7 @@ export function markCancelled(poolId: string, txSig: string): Promise<void> {
   pool.updatedAt = nowIso();
   updateEntryStatuses(data, poolId, () => "refunded");
   writeStore(data);
+  broadcastPoolUpdate(poolId, "status");
   return Promise.resolve();
 }
 

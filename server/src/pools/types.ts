@@ -38,6 +38,7 @@ export type EntryRecord = {
   stakeAmount: number;
   status: EntryStatus;
   enterTxSignature?: string | undefined;
+  claimTxSignature?: string | undefined;
   createdAt: string;
   updatedAt: string;
 };

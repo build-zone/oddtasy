@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-betting_program = "cisSZzchpfV9kJTuqjSNeT7KZcv8dirUsb2kKcAAsyT"
+betting_program = "42YpRKawvR2NtiTs4YDhurmsecmPC6hmGDx5KX25hqxn"
 
 [provider]
 cluster = "localnet"

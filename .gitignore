@@ -30,3 +30,5 @@ npm-debug.log*
 
 # Local pool mirror / runtime data
 server/data/
+# Resolver signer (server secret)
+server/resolver-keypair.json

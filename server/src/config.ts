@@ -12,7 +12,11 @@ function numberFromEnv(name: string, fallback: number): number {
 
 export const config = {
   port: numberFromEnv("PORT", 4100),
-  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  // comma-separated list, e.g. "http://localhost:3000,http://localhost:3001"
+  corsOrigin: (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   txlineApiOrigin: process.env.TXLINE_API_ORIGIN ?? "https://txline.txodds.com",
   txlineApiToken: process.env.TXLINE_API_TOKEN?.trim() ?? "",
   txlineGuestJwt: process.env.TXLINE_GUEST_JWT?.trim() ?? "",

@@ -1,14 +1,34 @@
-import type { Router } from "express";
+import type { Request, Response, Router } from "express";
 import { Router as createRouter } from "express";
+import { broadcastPoolUpdate } from "../chat/hub.js";
 import { poolPdas } from "../chain/pdas.js";
+import {
+  buildClaimTx,
+  buildCreatePoolTx,
+  buildCreateWithEntryTx,
+  buildEnterPoolTx,
+} from "../chain/txbuilder.js";
+import { displayNames } from "../users/store.js";
 import {
   createEntry,
   createPool,
   getPool,
   getPoolEntries,
   listPools,
+  recordTxSignature,
   type CreatePoolInput,
 } from "./store.js";
+import type { EntryRecord, PoolRecord } from "./types.js";
+
+function decoratePool<T extends PoolRecord>(pool: T): T & { hostName: string | null } {
+  const names = displayNames([pool.hostWallet]);
+  return { ...pool, hostName: names[pool.hostWallet] ?? null };
+}
+
+function decorateEntries(entries: EntryRecord[]): (EntryRecord & { displayName: string | null })[] {
+  const names = displayNames(entries.map((e) => e.wallet));
+  return entries.map((e) => ({ ...e, displayName: names[e.wallet] ?? null }));
+}
 
 function isWallet(value: unknown): value is string {
   return typeof value === "string" && value.length >= 32 && value.length <= 64;
@@ -89,11 +109,11 @@ export function createPoolRoutes(): Router {
         fixtureId: Number.isFinite(fixtureId) ? fixtureId : undefined,
         wallet,
         status,
-      }).map((pool) => ({ ...pool, chain: poolPdas(pool.id) })),
+      }).map((pool) => ({ ...decoratePool(pool), chain: poolPdas(pool.id) })),
     );
   });
 
-  router.post("/", (req, res) => {
+  router.post("/", async (req, res) => {
     const parsed = parseCreatePool(req.body);
     if (typeof parsed === "string") {
       res.status(400).json({ error: parsed });
@@ -102,9 +122,24 @@ export function createPoolRoutes(): Router {
 
     try {
       const pool = createPool(parsed);
+      // hosting includes the host's own bet: record their entry and bundle
+      // create_pool + enter_pool into one transaction
+      const hostPrediction = num((req.body as Record<string, unknown>).hostPrediction);
+      if (hostPrediction != null) {
+        createEntry(pool.id, {
+          wallet: pool.hostWallet,
+          prediction: hostPrediction,
+          optionLabel: pool.optionLabel ?? `Prediction ${hostPrediction}`,
+        });
+      }
+      const built =
+        hostPrediction != null
+          ? await buildCreateWithEntryTx(pool, hostPrediction)
+          : await buildCreatePoolTx(pool);
       res.status(201).json({
-        pool,
+        pool: getPool(pool.id) ?? pool,
         chain: poolPdas(pool.id),
+        ...(built ?? {}),
         instruction: {
           name: "createPool",
           args: {
@@ -132,7 +167,11 @@ export function createPoolRoutes(): Router {
       res.status(404).json({ error: "Pool not found" });
       return;
     }
-    res.json({ pool, entries: getPoolEntries(pool.id), chain: poolPdas(pool.id) });
+    res.json({
+      pool: decoratePool(pool),
+      entries: decorateEntries(getPoolEntries(pool.id)),
+      chain: poolPdas(pool.id),
+    });
   });
 
   router.get("/:poolId/chain", (req, res) => {
@@ -145,7 +184,7 @@ export function createPoolRoutes(): Router {
     res.json({ poolId: pool.id, chain: poolPdas(pool.id, member) });
   });
 
-  router.post("/:poolId/entries", (req, res) => {
+  router.post("/:poolId/entries", async (req, res) => {
     const pool = getPool(req.params.poolId);
     if (!pool) {
       res.status(404).json({ error: "Pool not found" });
@@ -174,10 +213,17 @@ export function createPoolRoutes(): Router {
         enterTxSignature:
           typeof body.enterTxSignature === "string" ? body.enterTxSignature.trim() : undefined,
       });
+      // only offer a transaction when the pool actually exists on-chain —
+      // otherwise wallets pre-simulate a doomed tx and scare the user
+      broadcastPoolUpdate(pool.id, "entry");
+      const built = pool.createTxSignature
+        ? await buildEnterPoolTx(pool.id, entry.wallet, prediction)
+        : null;
       res.status(201).json({
         entry,
         pool: getPool(pool.id),
         chain: poolPdas(pool.id, entry.wallet),
+        ...(built ?? {}),
         instruction: {
           name: "enterPool",
           args: {
@@ -191,6 +237,153 @@ export function createPoolRoutes(): Router {
       const message = err instanceof Error ? err.message : "Failed to enter pool";
       res.status(400).json({ error: message });
     }
+  });
+
+  // build the payout transaction: claim (resolved) or refund (voided/cancelled)
+  const claimHandler =
+    (kind: "winnings" | "refund") => async (req: Request, res: Response) => {
+      const pool = getPool(req.params.poolId as string);
+      if (!pool) {
+        res.status(404).json({ error: "Pool not found" });
+        return;
+      }
+      const body = req.body as Record<string, unknown>;
+      if (!isWallet(body?.wallet)) {
+        res.status(400).json({ error: "wallet is required" });
+        return;
+      }
+      const wallet = (body.wallet as string).trim();
+      const entry = getPoolEntries(pool.id).find((e) => e.wallet === wallet);
+      if (!entry) {
+        res.status(403).json({ error: "No entry for this wallet" });
+        return;
+      }
+      if (kind === "winnings" && pool.status !== "resolved") {
+        res.status(409).json({ error: "Pool is not resolved yet" });
+        return;
+      }
+      if (kind === "refund" && pool.status !== "voided" && pool.status !== "cancelled") {
+        res.status(409).json({ error: "Pool is not refundable" });
+        return;
+      }
+      if (!pool.createTxSignature) {
+        res.status(409).json({ error: "Pool was never created on-chain" });
+        return;
+      }
+      const built = await buildClaimTx(pool.id, wallet, kind);
+      if (!built) {
+        res.status(503).json({ error: "Chain not configured — cannot build transaction" });
+        return;
+      }
+      res.json({ ...built, chain: poolPdas(pool.id, wallet) });
+    };
+
+  router.post("/:poolId/claim", claimHandler("winnings"));
+  router.post("/:poolId/refund", claimHandler("refund"));
+
+  // rebuild the create transaction for a pool recorded but never put on-chain
+  router.post("/:poolId/create-tx", async (req, res) => {
+    const pool = getPool(req.params.poolId);
+    if (!pool) {
+      res.status(404).json({ error: "Pool not found" });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    const wallet = isWallet(body?.wallet) ? (body.wallet as string).trim() : "";
+    if (wallet !== pool.hostWallet) {
+      res.status(403).json({ error: "Only the host can create the pool on-chain" });
+      return;
+    }
+    if (pool.createTxSignature) {
+      res.status(409).json({ error: "Pool is already on-chain" });
+      return;
+    }
+    if (pool.status !== "open" || Math.floor(Date.now() / 1000) >= pool.deadline) {
+      res.status(409).json({ error: "Pool can no longer be created" });
+      return;
+    }
+    const hostEntry = getPoolEntries(pool.id).find(
+      (e) => e.wallet === pool.hostWallet && !e.enterTxSignature,
+    );
+    const built = hostEntry
+      ? await buildCreateWithEntryTx(pool, hostEntry.prediction)
+      : await buildCreatePoolTx(pool);
+    if (!built) {
+      res.status(503).json({ error: "Chain not configured — cannot build transaction" });
+      return;
+    }
+    res.json({ ...built, chain: poolPdas(pool.id) });
+  });
+
+  // rebuild the payment transaction for an entry that was recorded but never
+  // paid (user closed/failed the wallet approval)
+  router.post("/:poolId/entries/tx", async (req, res) => {
+    const pool = getPool(req.params.poolId);
+    if (!pool) {
+      res.status(404).json({ error: "Pool not found" });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    if (!isWallet(body?.wallet)) {
+      res.status(400).json({ error: "wallet is required" });
+      return;
+    }
+    const wallet = (body.wallet as string).trim();
+    const entry = getPoolEntries(pool.id).find((e) => e.wallet === wallet);
+    if (!entry) {
+      res.status(404).json({ error: "No entry for this wallet" });
+      return;
+    }
+    if (entry.enterTxSignature) {
+      res.status(409).json({ error: "Entry is already paid" });
+      return;
+    }
+    if (pool.status !== "open") {
+      res.status(409).json({ error: "Pool is no longer open" });
+      return;
+    }
+    if (!pool.createTxSignature) {
+      res.status(409).json({ error: "Pool was never created on-chain" });
+      return;
+    }
+    const built = await buildEnterPoolTx(pool.id, wallet, entry.prediction);
+    if (!built) {
+      res.status(503).json({ error: "Chain not configured — cannot build transaction" });
+      return;
+    }
+    res.json({ ...built, chain: poolPdas(pool.id, wallet) });
+  });
+
+  // client reports a confirmed signature so the record links to the explorer
+  router.post("/:poolId/tx", (req, res) => {
+    const pool = getPool(req.params.poolId);
+    if (!pool) {
+      res.status(404).json({ error: "Pool not found" });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    const kind = body?.kind;
+    const signature = typeof body?.signature === "string" ? body.signature.trim() : "";
+    if (kind !== "create" && kind !== "enter" && kind !== "claim" && kind !== "refund") {
+      res.status(400).json({ error: "kind must be create|enter|claim|refund" });
+      return;
+    }
+    if (!signature || signature.length < 32) {
+      res.status(400).json({ error: "signature is required" });
+      return;
+    }
+    const wallet = typeof body.wallet === "string" ? body.wallet.trim() : undefined;
+    if (kind !== "create" && !isWallet(wallet)) {
+      res.status(400).json({ error: "wallet is required" });
+      return;
+    }
+    const ok = recordTxSignature(pool.id, kind, signature, wallet);
+    if (!ok) {
+      res.status(404).json({ error: "No matching record" });
+      return;
+    }
+    broadcastPoolUpdate(pool.id, "payment");
+    res.json({ ok: true });
   });
 
   return router;

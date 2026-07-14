@@ -7,6 +7,10 @@ import { normalizeMarkets } from "./txline/normalize-markets.js";
 import { attachOddsStream, attachScoresStream } from "./stream/hub.js";
 import { createMarketRoutes } from "./markets/routes.js";
 import { createPoolRoutes } from "./pools/routes.js";
+import { createChatRoutes } from "./chat/routes.js";
+import { createUserRoutes } from "./users/routes.js";
+import { attachChatStream } from "./chat/hub.js";
+import { getPool } from "./pools/store.js";
 import { createPoolProgramFromEnv, startSettlementWorker } from "./settlement/worker.js";
 
 const app = express();
@@ -91,6 +95,18 @@ app.get("/fixtures/:fixtureId/normalized-markets", async (req, res) => {
 
 app.use("/fixtures/:fixtureId", createMarketRoutes());
 app.use("/pools", createPoolRoutes());
+app.use("/pools", createChatRoutes());
+app.use("/users", createUserRoutes());
+
+// pool group chat — no TxLINE dependency, works even without an API token
+app.get("/stream/chat", (req, res) => {
+  const poolId = typeof req.query.poolId === "string" ? req.query.poolId : "";
+  if (!poolId || !getPool(poolId)) {
+    res.status(404).json({ error: "Pool not found" });
+    return;
+  }
+  attachChatStream(res, poolId);
+});
 
 app.get("/stream/odds", (req, res) => {
   try {

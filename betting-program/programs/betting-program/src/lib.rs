@@ -11,7 +11,7 @@ pub use state::*;
 
 // PLACEHOLDER. This is a NEW program, not SquadXI. Generate a fresh keypair
 // (`anchor keys sync`) and replace this before deploying to devnet.
-declare_id!("cisSZzchpfV9kJTuqjSNeT7KZcv8dirUsb2kKcAAsyT");
+declare_id!("42YpRKawvR2NtiTs4YDhurmsecmPC6hmGDx5KX25hqxn");
 
 #[program]
 pub mod club_pool {
