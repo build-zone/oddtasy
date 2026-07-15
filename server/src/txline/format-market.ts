@@ -140,7 +140,8 @@ export function formatMarketLabel(
 ): string {
   const typeLabel = formatSuperOddsType(row.SuperOddsType);
   const parsed = parseMarketParameters(row.MarketParameters);
-  const periodLabel = formatMarketPeriod(row.MarketPeriod) ?? parsed.period ?? undefined;
+  const periodLabel =
+    formatMarketPeriod(row.MarketPeriod ?? undefined) ?? parsed.period ?? undefined;
   const detail = formatLineSuffix(parsed);
   return [typeLabel, periodLabel, detail].filter(Boolean).join(" · ");
 }
