@@ -3,6 +3,8 @@ import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/header";
+import { BottomNav } from "@/components/bottom-nav";
+import { SiteFooter } from "@/components/site-footer";
 
 const grotesk = Space_Grotesk({
   variable: "--font-grotesk",
@@ -33,18 +35,13 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${grotesk.variable} ${plex.variable} antialiased`}>
         <Providers>
-          <div className="max-w-[680px] mx-auto px-4 pb-10">
+          {/* pb clears the fixed BottomNav + the iOS home indicator */}
+          <div className="max-w-[680px] mx-auto px-4 pb-[calc(76px+env(safe-area-inset-bottom,0px))]">
             <Header />
             <main>{children}</main>
-            <footer className="font-mono text-[10.5px] leading-relaxed text-faint text-center mt-9 max-w-[560px] mx-auto">
-              <b className="text-muted font-semibold">
-                Fixtures, scores and odds are real
-              </b>{" "}
-              — live from TxLINE (TxODDS), cryptographically anchored on Solana.
-              Pools settle on the 90-minute result. Devnet USDC · this is a
-              hackathon build, not a licensed betting product.
-            </footer>
+            <SiteFooter />
           </div>
+          <BottomNav />
         </Providers>
       </body>
     </html>

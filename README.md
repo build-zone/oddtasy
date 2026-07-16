@@ -14,7 +14,7 @@ Frontend  →  Oddtasy API (:4100)  →  TxLINE (fixtures, odds, scores SSE)
 **What the server does**
 
 1. **TxLINE proxy** — Keeps `TXLINE_API_TOKEN` / guest JWT server-side. Serves fixtures, raw odds, normalized markets, and SSE streams so the client never talks to TxLINE directly.
-2. **Social markets** — Maps TxLINE books (and optionally a Ranktasy exact-score model) into program-ready options: match result, over/under, correct score.
+2. **Social markets** — Maps TxLINE books (and optionally an exact-score model) into program-ready options: match result, over/under, correct score.
 3. **Pool metadata** — Local JSON mirror of social pools and entries. Create/enter return Solana PDA + instruction args; the **user wallet** still signs on-chain.
 4. **Settlement worker** — When TxLINE is configured, listens to the scores stream. With a resolver key + IDL it can lock/resolve/cancel pools; without that it runs in local mirror mode only.
 
@@ -112,8 +112,8 @@ Program-ready social markets for the betting program.
 
 | Query | Default | Meaning |
 | --- | --- | --- |
-| `source` | `hybrid` | `txline` \| `ranktasy` \| `hybrid` |
-| `homeLambda` / `awayLambda` / `rho` | — | Ranktasy Dixon–Coles inputs (needed for model prices) |
+| `source` | `hybrid` | `txline` \| `model` \| `hybrid` |
+| `homeLambda` / `awayLambda` / `rho` | — | Dixon–Coles inputs (needed for model prices) |
 | `correctScoreCap` | env default (`4`) | Exact-score grid size |
 
 Response shape:

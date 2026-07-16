@@ -1,7 +1,7 @@
 /**
- * Dixon–Coles core — identical formulas to Ranktasy's frozen engine (proven by
- * its 113-check parity suite). Client-side copy exists only for the analysis
- * visuals (goals distribution); market pricing stays server-side.
+ * Dixon–Coles core — identical formulas to the server's pricing engine.
+ * Client-side copy exists only for the analysis visuals (goals
+ * distribution); market pricing stays server-side.
  */
 const FACT = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880];
 const fact = (n: number) => FACT[n] ?? Infinity;
@@ -59,7 +59,7 @@ export function smoothPath(pts: [number, number][]): string {
   return d;
 }
 
-/** Ranktasy heat spectrum: green = most likely → red = least likely. */
+/** Heat spectrum: green = most likely → red = least likely. */
 export function heatColor(p: number, pmax: number): string {
   if (pmax <= 0) return "rgb(23,44,35)";
   const u = 1 - Math.min(1, p / pmax);

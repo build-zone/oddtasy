@@ -84,12 +84,8 @@ export default function MatchesPage() {
 
   return (
     <div className="pt-2">
-      <p className="text-muted text-sm leading-relaxed mb-4 max-w-[54ch]">
-        Pick a match, make your call, and start a{" "}
-        <b className="text-ink font-semibold">pool your friends can join</b>.
-        Everyone bets the same amount — winners split the prize at the final
-        whistle.
-      </p>
+      {/* No preamble — the matches are the product. Anyone who needs the rules
+          gets them at the point of betting, in the host sheet. */}
 
       {days.length > 0 && (
         <div ref={stripRef} className="caldays mb-4" role="tablist" aria-label="Match days">

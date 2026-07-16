@@ -15,7 +15,7 @@ export function useFixtures() {
 export function useSocialOptions(
   fixtureId: number | null,
   lambdas?: { homeLambda: number; awayLambda: number; rho: number } | null,
-  source: "txline" | "ranktasy" | "hybrid" = "hybrid",
+  source: "txline" | "model" | "hybrid" = "hybrid",
 ) {
   return useQuery({
     queryKey: ["social-options", fixtureId, source, lambdas ?? null],

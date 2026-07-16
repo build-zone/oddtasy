@@ -480,12 +480,12 @@ async function checkSocialOptions(fixture: Fixture, odds: OddsRow[]): Promise<So
     res.ms,
   );
 
-  // Ranktasy path should still produce model-priced grids without TxLINE.
+  // Model path should still produce model-priced grids without TxLINE.
   {
-    const modelName = `GET /fixtures/${fixture.fixtureId}/social-options?source=ranktasy`;
+    const modelName = `GET /fixtures/${fixture.fixtureId}/social-options?source=model`;
     const modelRes = await request(
       "GET",
-      `/fixtures/${fixture.fixtureId}/social-options?source=ranktasy&homeLambda=1.4&awayLambda=1.1&rho=0.05`,
+      `/fixtures/${fixture.fixtureId}/social-options?source=model&homeLambda=1.4&awayLambda=1.1&rho=0.05`,
     );
     const modelBody = asRecord(modelRes.json);
     const modelMarkets = Array.isArray(modelBody?.socialMarkets)

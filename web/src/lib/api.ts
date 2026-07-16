@@ -48,7 +48,7 @@ export const api = {
 
   socialOptions: (
     fixtureId: number,
-    source: "txline" | "ranktasy" | "hybrid" = "hybrid",
+    source: "txline" | "model" | "hybrid" = "hybrid",
     lambdas?: { homeLambda: number; awayLambda: number; rho: number },
   ) => {
     const q = new URLSearchParams({ source });

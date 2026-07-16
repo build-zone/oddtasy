@@ -6,7 +6,7 @@ wallets + React Query.
 
 The visual language ("floodlit pitch at night": Space Grotesk + IBM Plex Mono,
 gold/cyan home–away semantics, heat-matrix market tiles, bottom-sheet flows)
-is inherited from Ranktasy so the two products read as one family.
+is a shared design language so the product family reads as one.
 
 ## Run
 

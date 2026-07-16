@@ -8,6 +8,11 @@ import {
   buildCreateWithEntryTx,
   buildEnterPoolTx,
 } from "../chain/txbuilder.js";
+import { config } from "../config.js";
+import {
+  createPoolProgramFromEnv,
+  settlePoolToOutcome,
+} from "../settlement/worker.js";
 import { displayNames } from "../users/store.js";
 import {
   createEntry,
@@ -28,6 +33,26 @@ function decoratePool<T extends PoolRecord>(pool: T): T & { hostName: string | n
 function decorateEntries(entries: EntryRecord[]): (EntryRecord & { displayName: string | null })[] {
   const names = displayNames(entries.map((e) => e.wallet));
   return entries.map((e) => ({ ...e, displayName: names[e.wallet] ?? null }));
+}
+
+/** How one wallet did in one pool — null if they never entered it. */
+function viewerEntryFor(
+  poolId: string,
+  wallet: string,
+): {
+  status: EntryRecord["status"];
+  prediction: number;
+  optionLabel: string | null;
+  claimTxSignature: string | null;
+} | null {
+  const entry = getPoolEntries(poolId).find((e) => e.wallet === wallet);
+  if (!entry) return null;
+  return {
+    status: entry.status,
+    prediction: entry.prediction,
+    optionLabel: entry.optionLabel ?? null,
+    claimTxSignature: entry.claimTxSignature ?? null,
+  };
 }
 
 function isWallet(value: unknown): value is string {
@@ -104,12 +129,21 @@ export function createPoolRoutes(): Router {
         ? (req.query.status as "open" | "locked" | "resolved" | "voided" | "cancelled")
         : undefined;
 
+    const pools = listPools({
+      fixtureId: Number.isFinite(fixtureId) ? fixtureId : undefined,
+      wallet,
+      status,
+    });
+
     res.json(
-      listPools({
-        fixtureId: Number.isFinite(fixtureId) ? fixtureId : undefined,
-        wallet,
-        status,
-      }).map((pool) => ({ ...decoratePool(pool), chain: poolPdas(pool.id) })),
+      pools.map((pool) => ({
+        ...decoratePool(pool),
+        chain: poolPdas(pool.id),
+        // When the caller asks for their own pools, tell them how *they* did.
+        // The pool's status only says the match settled, not whether the
+        // person reading it won — /me had no way to answer that without this.
+        ...(wallet ? { viewer: viewerEntryFor(pool.id, wallet) } : {}),
+      })),
     );
   });
 
@@ -384,6 +418,54 @@ export function createPoolRoutes(): Router {
     }
     broadcastPoolUpdate(pool.id, "payment");
     res.json({ ok: true });
+  });
+
+  /**
+   * Dev-only: finalize a pool to a chosen outcome, standing in for a result
+   * the scores stream cannot give us on demand. Runs the real settlement path
+   * (on-chain lock+resolve when the resolver is configured), so a pool settled
+   * this way is genuinely claimable — the only fiction is *which* outcome won.
+   *
+   * 404s rather than 403s when disabled: an endpoint that isn't enabled
+   * shouldn't announce that it exists.
+   */
+  router.post("/:poolId/dev/resolve", async (req, res) => {
+    if (!config.devTools) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const pool = getPool(req.params.poolId);
+    if (!pool) {
+      res.status(404).json({ error: "Pool not found" });
+      return;
+    }
+    if (pool.status === "resolved" || pool.status === "voided" || pool.status === "cancelled") {
+      res.status(409).json({ error: `Pool is already ${pool.status}` });
+      return;
+    }
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const outcome = Number(body.winningOutcome);
+    if (!Number.isInteger(outcome) || outcome < 0 || outcome >= pool.outcomeCount) {
+      res.status(400).json({
+        error: `winningOutcome must be an integer 0..${pool.outcomeCount - 1}`,
+      });
+      return;
+    }
+
+    try {
+      await settlePoolToOutcome(createPoolProgramFromEnv(), pool, outcome);
+      const settled = getPool(pool.id);
+      res.json({
+        ok: true,
+        pool: settled,
+        entries: getPoolEntries(pool.id),
+      });
+    } catch (err) {
+      res.status(502).json({
+        error: err instanceof Error ? err.message : "Settlement failed",
+      });
+    }
   });
 
   return router;

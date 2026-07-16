@@ -209,6 +209,12 @@ export function finalizingPoolsForFixture(fixtureId: string | number): Promise<P
   );
 }
 
+/** Every pool still awaiting a terminal state (lock or settle), across all
+ * fixtures — the reconciliation sweep's work list. */
+export function activePools(): PoolRecord[] {
+  return clone(readStore().pools.filter((pool) => ["open", "locked"].includes(pool.status)));
+}
+
 function setPoolStatus(poolId: string, patch: Partial<PoolRecord>): PoolRecord | undefined {
   const data = readStore();
   const pool = data.pools.find((candidate) => candidate.id === poolId);

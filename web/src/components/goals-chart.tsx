@@ -9,10 +9,10 @@ import {
   totalLabel,
   totalsFromMatrix,
 } from "@/lib/dixon-coles";
-import type { FixtureLambdas } from "@/lib/priors";
+import type { FixtureLambdas, ModelCoverage } from "@/lib/priors";
 
 /**
- * Ranktasy's goals-distribution chart: discrete bars are the real numbers,
+ * Goals-distribution chart: discrete bars are the real numbers,
  * the spline is a smoothing overlay only. Model view, labeled as such.
  */
 export function GoalsChart({ lambdas }: { lambdas: FixtureLambdas }) {
@@ -86,17 +86,36 @@ export function AttributionLine({
   homeName,
   awayName,
   lambdas,
+  coverage,
 }: {
   homeName: string;
   awayName: string;
   lambdas: FixtureLambdas;
+  coverage?: ModelCoverage;
 }) {
+  // Name any side the model has no rating for, so its λ reads as the neutral
+  // default it is rather than a genuine estimate.
+  const unrated = coverage
+    ? [!coverage.homeRated ? homeName : null, !coverage.awayRated ? awayName : null].filter(
+        Boolean,
+      )
+    : [];
+
   return (
     <p className="font-mono text-[10.5px] text-faint text-center mt-4 leading-relaxed">
       <b className="text-muted font-semibold">{homeName}</b> λ {lambdas.homeLambda.toFixed(2)} ·{" "}
       <b className="text-muted font-semibold">{awayName}</b> λ {lambdas.awayLambda.toFixed(2)} ·
       Dixon–Coles ρ = {lambdas.rho.toFixed(2)} — model prices are seeded priors, not fitted;
       TxLINE market prices override them where a book exists.
+      {unrated.length > 0 && (
+        <>
+          {" "}
+          <span className="text-home">
+            No rating for {unrated.join(" or ")} — {unrated.length === 2 ? "both λ shown are" : "that λ is"}{" "}
+            the model&apos;s neutral default, so treat this forecast as a placeholder, not a read.
+          </span>
+        </>
+      )}
     </p>
   );
 }

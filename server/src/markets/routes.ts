@@ -3,7 +3,7 @@ import { Router as createRouter } from "express";
 import { config } from "../config.js";
 import { fetchOddsSnapshot } from "../txline/client.js";
 import { normalizeMarkets } from "../txline/normalize-markets.js";
-import { blankSocialMarkets, ranktasySocialMarkets, txlineSocialMarkets } from "./engine.js";
+import { blankSocialMarkets, modelSocialMarkets, txlineSocialMarkets } from "./engine.js";
 
 function optionalNumber(value: unknown): number | undefined {
   if (typeof value !== "string" || !value.trim()) return undefined;
@@ -46,10 +46,10 @@ export function createMarketRoutes(): Router {
 
     try {
       const txlineMarkets =
-        source === "ranktasy" ? [] : txlineSocialMarkets(normalizeMarkets(await fetchOddsSnapshot(fixtureId)), cap);
+        source === "model" ? [] : txlineSocialMarkets(normalizeMarkets(await fetchOddsSnapshot(fixtureId)), cap);
       const modelMarkets =
         homeLambda != null && awayLambda != null
-          ? ranktasySocialMarkets(
+          ? modelSocialMarkets(
               rho == null
                 ? { homeLambda, awayLambda, correctScoreCap: cap }
                 : { homeLambda, awayLambda, rho, correctScoreCap: cap },
@@ -57,7 +57,7 @@ export function createMarketRoutes(): Router {
           : [];
 
       let socialMarkets = txlineMarkets;
-      if (source === "ranktasy") socialMarkets = modelMarkets;
+      if (source === "model") socialMarkets = modelMarkets;
       if (source === "hybrid") {
         const hasTxlineKeys = new Set(txlineMarkets.map((m) => `${m.marketKey}:${m.marketParam}`));
         socialMarkets = [

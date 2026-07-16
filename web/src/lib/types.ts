@@ -84,6 +84,17 @@ export type PoolRecord = {
   hostWallet: string;
   /** decorated by the server from the users store */
   hostName?: string | null;
+  /**
+   * How the requesting wallet did in this pool — only present on
+   * GET /pools?wallet=…, and null when they never entered. The pool's own
+   * status says the match settled; this says whether *you* won it.
+   */
+  viewer?: {
+    status: EntryStatus;
+    prediction: number;
+    optionLabel: string | null;
+    claimTxSignature: string | null;
+  } | null;
   marketType: number;
   marketKey: string;
   marketParam: number;

@@ -80,7 +80,7 @@ export function formatSuperOddsType(value: string): string {
   return humanizeToken(value);
 }
 
-export function formatMarketPeriod(value?: string): string | undefined {
+export function formatMarketPeriod(value?: string | null): string | undefined {
   if (!value?.trim()) return undefined;
   const key = normalizeKey(value);
   return PERIOD_LABELS[key] ?? humanizeToken(value);

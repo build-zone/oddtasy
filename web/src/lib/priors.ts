@@ -1,7 +1,7 @@
 /**
- * Seeded team-strength priors (expected goals vs an average opponent), the same
- * approach as Ranktasy's shipped app: NOT fitted to this tournament, treat as
- * illustrative. They exist so every market always has an analysis to show —
+ * Seeded team-strength priors (expected goals vs an average opponent):
+ * NOT fitted to this tournament, treat as illustrative. They exist so every
+ * market always has an analysis to show —
  * real TxLINE prices override them wherever a book exists (hybrid source).
  */
 import { awayTeam, homeTeam, type OddtasyFixture } from "./types";
@@ -31,6 +31,7 @@ const TEAM_LAMBDA: Record<string, number> = {
   mexico: 1.45,
   senegal: 1.4,
   ukraine: 1.4,
+  "czech republic": 1.4,
   "ivory coast": 1.4,
   algeria: 1.35,
   nigeria: 1.35,
@@ -65,17 +66,54 @@ const TEAM_LAMBDA: Record<string, number> = {
   "new zealand": 0.9,
   bosnia: 0.9,
   "bosnia and herzegovina": 0.9,
+  // TxLINE spells it with an ampersand — without this alias the rating above
+  // never matches and Bosnia silently defaults to λ=1.2.
+  "bosnia & herzegovina": 0.9,
   "congo dr": 0.9,
+  iraq: 0.9,
   qatar: 0.85,
   honduras: 0.8,
   bolivia: 0.8,
   jordan: 0.75,
+  haiti: 0.75,
   "cape verde": 0.7,
   uzbekistan: 0.7,
+  curacao: 0.7,
+  vietnam: 0.65,
+  india: 0.55,
+  myanmar: 0.5,
 };
 
 export function teamLambda(name: string): number {
   return TEAM_LAMBDA[name.trim().toLowerCase()] ?? DEFAULT_LAMBDA;
+}
+
+/** Whether the model actually has a rating for this team, or is about to fall
+ * back to DEFAULT_LAMBDA. A defaulted side means the "model" price is a neutral
+ * placeholder, not a read on the team — the caller should say so rather than
+ * render it as a confident number. */
+export function isTeamRated(name: string): boolean {
+  return TEAM_LAMBDA[name.trim().toLowerCase()] != null;
+}
+
+export type ModelCoverage = {
+  homeRated: boolean;
+  awayRated: boolean;
+  /** Both sides unrated: the forecast is a pure default, worth the loudest caveat. */
+  bothDefaulted: boolean;
+  /** At least one side unrated: the matchup is partly guesswork. */
+  anyDefaulted: boolean;
+};
+
+export function modelCoverage(fixture: OddtasyFixture): ModelCoverage {
+  const homeRated = isTeamRated(homeTeam(fixture));
+  const awayRated = isTeamRated(awayTeam(fixture));
+  return {
+    homeRated,
+    awayRated,
+    bothDefaulted: !homeRated && !awayRated,
+    anyDefaulted: !homeRated || !awayRated,
+  };
 }
 
 export type FixtureLambdas = { homeLambda: number; awayLambda: number; rho: number };
@@ -86,8 +124,8 @@ const clamp = (x: number) => Math.min(3.2, Math.max(0.3, x));
 
 /** Ratings are "goals vs an average opponent", so each side's rate is damped
  * by the opponent's strength — a strong opponent suppresses your λ, a weak
- * one lifts it. Matches the matchup-dependent feel of Ranktasy's hand-set
- * per-fixture priors without hand-setting 104 fixtures. */
+ * one lifts it. Gives a matchup-dependent feel without hand-setting
+ * per-fixture priors across 104 fixtures. */
 export function fixtureLambdas(fixture: OddtasyFixture): FixtureLambdas {
   const rh = teamLambda(homeTeam(fixture));
   const ra = teamLambda(awayTeam(fixture));

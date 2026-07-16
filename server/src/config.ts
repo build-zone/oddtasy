@@ -32,6 +32,13 @@ export const config = {
   defaultRakeBps: numberFromEnv("ODDTASY_DEFAULT_RAKE_BPS", 500),
   defaultMaxEntries: numberFromEnv("ODDTASY_DEFAULT_MAX_ENTRIES", 200),
   correctScoreCap: numberFromEnv("ODDTASY_CORRECT_SCORE_CAP", 4),
+  /**
+   * Unlocks POST /pools/:id/dev/resolve, which finalizes a pool to a chosen
+   * outcome without waiting on the TxLINE scores stream. Needed because the
+   * feed only settles real matches, and there is no way to make Brazil score
+   * on demand. Off unless explicitly enabled — never set it in production.
+   */
+  devTools: process.env.ODDTASY_DEV_TOOLS === "1",
 } as const;
 
 export function assertTxLineConfigured(): void {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AttributionLine, GoalsChart } from "@/components/goals-chart";
 import { LiveStage } from "@/components/live-stage";
@@ -9,11 +9,12 @@ import { MarketPicker } from "@/components/market-picker";
 import { Sheet } from "@/components/sheet";
 import { StatusPill } from "@/components/status-pill";
 import { useToast } from "@/components/toast";
+import { WinTakeover } from "@/components/win-takeover";
 import { useFixtures, usePool, useSocialOptions } from "@/hooks/use-queries";
 import { useWallet } from "@/hooks/use-wallet";
 import { api } from "@/lib/api";
 import { countdown, odds, shortWallet, usdc, usdcFromBase } from "@/lib/format";
-import { fixtureLambdas } from "@/lib/priors";
+import { fixtureLambdas, modelCoverage } from "@/lib/priors";
 import { awayTeam, homeTeam, type SocialOption } from "@/lib/types";
 
 const MARKET_LABEL: Record<string, string> = {
@@ -44,6 +45,7 @@ export default function PoolPage({
   // options for this pool's market — with model priors so joiners always
   // have an analysis to look at, not bare labels
   const lambdas = fixture ? fixtureLambdas(fixture) : null;
+  const coverage = fixture ? modelCoverage(fixture) : null;
   const { data: options } = useSocialOptions(pool?.fixtureId ?? null, lambdas);
   const market = options?.socialMarkets.find(
     (m) =>
@@ -55,9 +57,25 @@ export default function PoolPage({
   const [pick, setPick] = useState<SocialOption | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // The win takeover opens itself once, on an unclaimed win, and stays open
+  // through the claim so the payout lands inside the moment. Dismissing is
+  // sticky: a settled win never ambushes you again on revisit.
+  const [winOpen, setWinOpen] = useState(false);
+  const [winDismissed, setWinDismissed] = useState(false);
+
   const viewerEntry = wallet.address
     ? entries.find((e) => e.wallet === wallet.address)
     : undefined;
+
+  const unclaimedWin =
+    pool?.status === "resolved" &&
+    viewerEntry?.status === "won" &&
+    !viewerEntry.claimTxSignature &&
+    pool.shareAmount != null;
+
+  useEffect(() => {
+    if (unclaimedWin && !winDismissed) setWinOpen(true);
+  }, [unclaimedWin, winDismissed]);
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["pool", poolId] });
@@ -132,9 +150,13 @@ export default function PoolPage({
       return { kind, signature };
     },
     onSuccess: ({ kind, signature }) => {
-      toast(
-        `${kind === "claim" ? "Winnings claimed" : "Money refunded"} · ${signature.slice(0, 8)}…`,
-      );
+      // The takeover shows its own paid state — a toast on top of it would
+      // just talk over the moment.
+      if (!winOpen) {
+        toast(
+          `${kind === "claim" ? "Winnings claimed" : "Money refunded"} · ${signature.slice(0, 8)}…`,
+        );
+      }
       refresh();
     },
     onError: (err) =>
@@ -253,6 +275,7 @@ export default function PoolPage({
                   homeName={homeTeam(fixture)}
                   awayName={awayTeam(fixture)}
                   lambdas={lambdas}
+                  coverage={coverage ?? undefined}
                 />
               )}
             </>
@@ -466,15 +489,30 @@ export default function PoolPage({
                   ? `Bet ${usdc(pool.stakeUsdc)} on ${pick.label}`
                   : "Log in to join"}
             </button>
-            <p className="font-mono text-[10.5px] leading-relaxed text-faint text-center mt-3">
-              Everyone bets the same {usdc(pool.stakeUsdc)} (devnet USDC). Winners
-              share the prize — minus a {pool.rakeBps / 100}% house fee — paid from
-              the official 90-minute result. Split between winners if there&apos;s
-              more than one.
+            {/* The terms that change what you'd do: the fee and when it pays.
+                Everything else was restating the screen above it. */}
+            <p className="font-mono text-[10.5px] text-faint text-center mt-3">
+              Winners split the prize, minus {pool.rakeBps / 100}% · settles on the
+              90-minute result
             </p>
           </>
         )}
       </Sheet>
+
+      {winOpen && pool.shareAmount != null && (
+        <WinTakeover
+          amount={Number(pool.shareAmount) / 1_000_000}
+          optionLabel={viewerEntry?.optionLabel ?? winningOption?.label ?? "Your pick"}
+          fixtureLabel={pool.fixtureLabel}
+          claiming={payout.isPending}
+          signature={viewerEntry?.claimTxSignature ?? null}
+          onClaim={() => payout.mutate("claim")}
+          onDismiss={() => {
+            setWinOpen(false);
+            setWinDismissed(true);
+          }}
+        />
+      )}
     </div>
   );
 }

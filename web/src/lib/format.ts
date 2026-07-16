@@ -3,7 +3,13 @@
 /** Money display from a whole-USDC number (server's stakeUsdc). USDC is
  * dollar-pegged, so fans read plain dollars; fine print says "devnet USDC". */
 export function usdc(amount: number): string {
-  return `$${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  // Cents are all-or-nothing: "$7.60", never "$7.6" — but a round figure stays
+  // "$8" rather than "$8.00", which is how a fan would say it out loud.
+  const hasCents = Math.round(amount * 100) % 100 !== 0;
+  return `$${amount.toLocaleString(undefined, {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 /** USDC display from integer base units (6 decimals), given as number or string. */

@@ -13,7 +13,7 @@ import { useFixtures, usePools, useSocialOptions } from "@/hooks/use-queries";
 import { useWallet } from "@/hooks/use-wallet";
 import { api } from "@/lib/api";
 import { kickoffLabel, odds, usdc } from "@/lib/format";
-import { fixtureLambdas } from "@/lib/priors";
+import { fixtureLambdas, modelCoverage } from "@/lib/priors";
 import { awayTeam, homeTeam } from "@/lib/types";
 import { AttributionLine, GoalsChart } from "@/components/goals-chart";
 import { PoolCard } from "@/components/pool-card";
@@ -33,6 +33,7 @@ export default function FixturePage({
   const { data: fixtures } = useFixtures();
   const fixture = fixtures?.find((f) => f.fixtureId === fixtureId) ?? null;
   const lambdas = fixture ? fixtureLambdas(fixture) : null;
+  const coverage = fixture ? modelCoverage(fixture) : null;
   const { data: options, isLoading: optionsLoading } = useSocialOptions(fixtureId, lambdas);
   const { data: fixturePools } = usePools({ fixtureId });
   const { score } = useLiveScore(fixtureId, fixture?.status === "live");
@@ -170,6 +171,13 @@ export default function FixturePage({
           {lambdas && (
             <section className="mb-7">
               <p className="k mb-2.5">Goals forecast</p>
+              {coverage?.anyDefaulted && (
+                <p className="font-mono text-[11px] text-home text-center bg-surface border border-line2 rounded-[12px] px-4 py-2.5 mb-3 leading-relaxed">
+                  {coverage.bothDefaulted
+                    ? `The model has no rating for either side, so these prices are a neutral default — not a read on ${home} vs ${away}.`
+                    : `The model has no rating for ${coverage.homeRated ? away : home}, so this forecast leans on a neutral default. Treat it as a placeholder.`}
+                </p>
+              )}
               <GoalsChart lambdas={lambdas} />
             </section>
           )}
@@ -184,7 +192,12 @@ export default function FixturePage({
             }}
           />
           {lambdas && (
-            <AttributionLine homeName={home} awayName={away} lambdas={lambdas} />
+            <AttributionLine
+              homeName={home}
+              awayName={away}
+              lambdas={lambdas}
+              coverage={coverage ?? undefined}
+            />
           )}
         </>
       )}
@@ -280,10 +293,8 @@ export default function FixturePage({
                   ? `Start pool · bet ${usdc(stake)}`
                   : "Log in to start"}
             </button>
-            <p className="font-mono text-[10.5px] leading-relaxed text-faint text-center mt-3">
-              Your {usdc(stake)} on {selection.option.label} is the first bet in
-              — everyone who joins bets the same {usdc(stake)} (devnet USDC).
-              Winners split the prize when the final whistle goes.
+            <p className="font-mono text-[10.5px] text-faint text-center mt-3">
+              You bet first · everyone who joins bets the same {usdc(stake)}
             </p>
           </>
         )}

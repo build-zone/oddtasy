@@ -32,7 +32,7 @@ export type SocialMarket = {
   dataNote: string;
 };
 
-export type RanktasyModelInput = {
+export type ModelInput = {
   homeLambda: number;
   awayLambda: number;
   rho?: number;

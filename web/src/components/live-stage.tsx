@@ -8,7 +8,7 @@ import { shortWallet } from "@/lib/format";
 import { awayTeam, homeTeam, type OddtasyFixture } from "@/lib/types";
 
 /**
- * The live pitch stage — Ranktasy's immersive 2D view, grounded in real data:
+ * The live pitch stage — an immersive 2D view, grounded in real data:
  * scores and match phase stream from TxLINE, goal popups fire off actual score
  * changes, and the chat overlay is the pool's real group chat. The ball motion
  * is ambience; the footer says so. Nothing on this surface is invented.

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
- * Single bottom sheet, Ranktasy-style: content is a prop, the shell is one
+ * Single bottom sheet: content is a prop, the shell is one
  * implementation (grip, blurred overlay, slide-up, Escape/overlay close).
  */
 export function Sheet({

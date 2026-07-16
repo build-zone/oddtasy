@@ -55,7 +55,7 @@ export interface Score {
   away: number;
 }
 
-/** Ranktasy v2 grid fold: goals >=4 collapse into a "4+" bucket by default. */
+/** Grid fold: goals >=4 collapse into a "4+" bucket by default. */
 export const DEFAULT_CS_CAP = 4;
 export function correctScoreIndex(home: number, away: number, cap = DEFAULT_CS_CAP): number {
   const h = Math.min(home, cap);
@@ -69,7 +69,7 @@ export function correctScoreIndex(home: number, away: number, cap = DEFAULT_CS_C
  *  - OVER_UNDER:   0 under, 1 over. market_param is the line * 10 (2.5 -> 25).
  *                  Half-integer lines never push.
  *  - CORRECT_SCORE: folded (home,away) index. market_param is the cap
- *                   (Ranktasy v2 uses 4 => 0,1,2,3,4+).
+ *                   (4 => 0,1,2,3,4+).
  */
 export function winningOutcome(marketType: number, marketParam: number, score: Score): number {
   switch (marketType) {

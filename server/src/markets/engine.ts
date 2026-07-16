@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import type { OddtasyMarket } from "../txline/types.js";
 import { normalizedOutcomeKey, parseMarketParameters } from "../txline/format-market.js";
-import { MARKET, type RanktasyModelInput, type SocialMarket, type SocialOption } from "./types.js";
+import { MARKET, type ModelInput, type SocialMarket, type SocialOption } from "./types.js";
 
 const FACT = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880];
 const MAXG = 8;
@@ -327,11 +327,11 @@ function txlineCorrectScore(markets: OddtasyMarket[], cap: number): SocialMarket
     correctScoreCap: cap,
     options: [...byPrediction.values()].sort((a, b) => a.prediction - b.prediction),
     dataNote:
-      "TxLINE correct-score prices mapped into the folded Ranktasy grid. Missing buckets are left out if the feed does not price them.",
+      "TxLINE correct-score prices mapped into the folded score grid. Missing buckets are left out if the feed does not price them.",
   };
 }
 
-export function ranktasySocialMarkets(input: RanktasyModelInput): SocialMarket[] {
+export function modelSocialMarkets(input: ModelInput): SocialMarket[] {
   const matrix = scoreMatrix(input.homeLambda, input.awayLambda, input.rho ?? DEFAULT_RHO);
   const folded = foldMatrix(matrix, input.correctScoreCap);
   const outcomes = outcomeProbabilities(matrix);
@@ -348,7 +348,7 @@ export function ranktasySocialMarkets(input: RanktasyModelInput): SocialMarket[]
       probabilityOption({ prediction: 1, key: "draw", label: "Draw", probability: outcomes.draw }),
       probabilityOption({ prediction: 2, key: "away", label: "Away", probability: outcomes.away }),
     ],
-    dataNote: "Ranktasy model-fair odds from Dixon-Coles probabilities.",
+    dataNote: "Model-fair odds from Dixon-Coles probabilities.",
   };
 
   const overUnders = DEFAULT_OU_LINES.map((line) => {
@@ -364,7 +364,7 @@ export function ranktasySocialMarkets(input: RanktasyModelInput): SocialMarket[]
         probabilityOption({ prediction: 0, key: "under", label: `Under ${line}`, probability: under }),
         probabilityOption({ prediction: 1, key: "over", label: `Over ${line}`, probability: over }),
       ],
-      dataNote: "Ranktasy model-fair odds from summed total-goals probabilities.",
+      dataNote: "Model-fair odds from summed total-goals probabilities.",
     } satisfies SocialMarket;
   });
 
@@ -391,7 +391,7 @@ export function ranktasySocialMarkets(input: RanktasyModelInput): SocialMarket[]
     outcomeCount: (input.correctScoreCap + 1) * (input.correctScoreCap + 1),
     correctScoreCap: input.correctScoreCap,
     options: scoreOptions,
-    dataNote: "Ranktasy v2 folded exact-score grid. Last row/column is the + bucket.",
+    dataNote: "Folded exact-score grid. Last row/column is the + bucket.",
   };
 
   return [matchResult, ...overUnders, correctScore];
@@ -420,7 +420,7 @@ export function blankSocialMarkets(cap = config.correctScoreCap): SocialMarket[]
         emptyOption(1, "draw", "Draw"),
         emptyOption(2, "away", "Away"),
       ],
-      dataNote: "No TxLINE price or Ranktasy lambda input was available.",
+      dataNote: "No TxLINE price or model lambda input was available.",
     },
     ...DEFAULT_OU_LINES.map(
       (line) =>
@@ -435,7 +435,7 @@ export function blankSocialMarkets(cap = config.correctScoreCap): SocialMarket[]
             emptyOption(0, "under", `Under ${line}`),
             emptyOption(1, "over", `Over ${line}`),
           ],
-          dataNote: "No TxLINE price or Ranktasy lambda input was available.",
+          dataNote: "No TxLINE price or model lambda input was available.",
         }) satisfies SocialMarket,
     ),
     {
@@ -450,7 +450,7 @@ export function blankSocialMarkets(cap = config.correctScoreCap): SocialMarket[]
           emptyOption(correctScorePrediction(home, away, cap), `${home}-${away}`, scoreLabel(home, away, cap)),
         ),
       ),
-      dataNote: "No TxLINE price or Ranktasy lambda input was available.",
+      dataNote: "No TxLINE price or model lambda input was available.",
     },
   ];
 }

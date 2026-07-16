@@ -8,7 +8,7 @@ import { extractLiveScore, type LiveScore, type ScoreStreamRow } from "@/lib/typ
  * Subscribes to the server's /stream/scores SSE proxy for one fixture.
  * Reconnects with backoff; exposes the latest score plus a staleness stamp
  * so the UI can label a stalled stream instead of silently freezing
- * (Ranktasy's "never invent data" rule).
+ * (the "never invent data" rule).
  */
 export function useLiveScore(fixtureId: number | null, active = true) {
   const [score, setScore] = useState<LiveScore | null>(null);
