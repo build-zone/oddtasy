@@ -77,15 +77,42 @@ export default function MatchesPage() {
     });
   }, [dayIdx, days.length, day]);
 
-  const visible = useMemo(() => {
+  // A thin day (1–2 games) left dead space below the list. Show the selected
+  // day, then everything still to play after it under a "Coming up" — spanning
+  // later days — so the list runs as long as there are matches to scan rather
+  // than stopping short. Each card carries its own date, so the spillover reads
+  // clearly. (Only upcoming fixtures fill in; past days aren't back-filled.)
+  const { onDay, ahead } = useMemo(() => {
     const label = days[dayIdx]?.label;
-    return label ? sorted.filter((f) => dayKey(f.kickoffIso) === label) : sorted;
+    if (!label) return { onDay: sorted, ahead: [] as typeof sorted };
+    const onDay = sorted.filter((f) => dayKey(f.kickoffIso) === label);
+    const last = onDay[onDay.length - 1];
+    const startIdx = last ? sorted.indexOf(last) + 1 : 0;
+    const ahead = sorted.slice(startIdx).filter((f) => f.status !== "finished");
+    return { onDay, ahead };
   }, [days, dayIdx, sorted]);
 
   return (
     <div className="pt-2">
-      {/* No preamble — the matches are the product. Anyone who needs the rules
-          gets them at the point of betting, in the host sheet. */}
+      {/* Centered hero above the day strip. The title runs home-gold → away-cyan
+          — the app's two match colours — so the brand identity is in the name
+          itself. Rules stay at the point of betting, in the host sheet. */}
+      <div className="text-center mt-1 mb-6">
+        <h1
+          className="text-[clamp(26px,7.6vw,38px)] font-bold tracking-tight leading-[1.05]"
+          style={{
+            backgroundImage: "linear-gradient(92deg, var(--home) 5%, var(--away) 95%)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          Social betting pools
+        </h1>
+        <p className="font-mono text-[11px] text-faint mt-2">
+          Bet with friends · winners split the prize
+        </p>
+      </div>
 
       {days.length > 0 && (
         <div ref={stripRef} className="caldays mb-4" role="tablist" aria-label="Match days">
@@ -128,10 +155,18 @@ export default function MatchesPage() {
 
       {!isLoading && !isError && (
         <div className="flex flex-col gap-3">
-          {visible.map((f) => (
+          {onDay.map((f) => (
             <FixtureCard key={f.fixtureId} fixture={f} />
           ))}
-          {visible.length === 0 && (
+          {ahead.length > 0 && (
+            <>
+              <p className="k mt-2 mb-0.5">Coming up</p>
+              {ahead.map((f) => (
+                <FixtureCard key={f.fixtureId} fixture={f} />
+              ))}
+            </>
+          )}
+          {onDay.length === 0 && ahead.length === 0 && (
             <div className="font-mono text-xs text-faint text-center py-8 bg-surface border border-dashed border-line2 rounded-[14px]">
               No fixtures for this day.
             </div>
