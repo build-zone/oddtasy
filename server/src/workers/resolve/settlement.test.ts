@@ -53,6 +53,20 @@ test("correct-score folds the 4+ tail by default", () => {
   );
 });
 
+test("BTTS: yes only when both sides score (0 no, 1 yes)", () => {
+  assert.equal(winningOutcome(MARKET.BTTS, 0, { home: 2, away: 1 }), 1); // both scored -> yes
+  assert.equal(winningOutcome(MARKET.BTTS, 0, { home: 1, away: 1 }), 1); // both scored -> yes
+  assert.equal(winningOutcome(MARKET.BTTS, 0, { home: 3, away: 0 }), 0); // away blank -> no
+  assert.equal(winningOutcome(MARKET.BTTS, 0, { home: 0, away: 0 }), 0); // goalless -> no
+});
+
+test("odd/even settles on total goals (0 even, 1 odd; 0-0 is even)", () => {
+  assert.equal(winningOutcome(MARKET.ODD_EVEN, 0, { home: 2, away: 1 }), 1); // total 3 -> odd
+  assert.equal(winningOutcome(MARKET.ODD_EVEN, 0, { home: 1, away: 1 }), 0); // total 2 -> even
+  assert.equal(winningOutcome(MARKET.ODD_EVEN, 0, { home: 0, away: 0 }), 0); // total 0 -> even
+  assert.equal(winningOutcome(MARKET.ODD_EVEN, 0, { home: 3, away: 0 }), 1); // total 3 -> odd
+});
+
 test("regulation score sums first + second half per side", () => {
   // home = P1 (1001+2001), away = P2 (1002+2002)
   const stats = { "1001": 1, "2001": 1, "1002": 0, "2002": 1 };

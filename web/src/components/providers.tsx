@@ -6,6 +6,7 @@ import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import { useState, type ReactNode } from "react";
 import { ToastProvider } from "./toast";
 import { PrivyWalletBridge, StubWalletProvider } from "./wallet-context";
+import { AutoFaucet } from "@/hooks/use-faucet";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 const RPC_URL =
@@ -31,7 +32,12 @@ export function Providers({ children }: { children: ReactNode }) {
       }),
   );
 
-  const inner = <ToastProvider>{children}</ToastProvider>;
+  const inner = (
+    <ToastProvider>
+      <AutoFaucet />
+      {children}
+    </ToastProvider>
+  );
 
   return (
     <QueryClientProvider client={queryClient}>

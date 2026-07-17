@@ -105,8 +105,8 @@ export function AttributionLine({
     <p className="font-mono text-[10.5px] text-faint text-center mt-4 leading-relaxed">
       <b className="text-muted font-semibold">{homeName}</b> λ {lambdas.homeLambda.toFixed(2)} ·{" "}
       <b className="text-muted font-semibold">{awayName}</b> λ {lambdas.awayLambda.toFixed(2)} ·
-      Dixon–Coles ρ = {lambdas.rho.toFixed(2)} — model prices are seeded priors, not fitted;
-      TxLINE market prices override them where a book exists.
+      Dixon–Coles ρ = {lambdas.rho.toFixed(2)} — model prices fitted from recent
+      international results; TxLINE market prices override them where a book exists.
       {unrated.length > 0 && (
         <>
           {" "}

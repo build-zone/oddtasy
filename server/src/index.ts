@@ -9,6 +9,8 @@ import { createMarketRoutes } from "./markets/routes.js";
 import { createPoolRoutes } from "./pools/routes.js";
 import { createChatRoutes } from "./chat/routes.js";
 import { createUserRoutes } from "./users/routes.js";
+import { createFaucetRoutes } from "./faucet/routes.js";
+import { faucetConfigured } from "./chain/faucet.js";
 import { attachChatStream } from "./chat/hub.js";
 import { getPool } from "./pools/store.js";
 import { createPoolProgramFromEnv, startSettlementWorker } from "./settlement/worker.js";
@@ -50,6 +52,7 @@ app.get("/health", (_req, res) => {
     usdcMint: config.usdcMint || null,
     resolverConfigured,
     resolverModeReady: resolverConfigured && Boolean(config.programIdlPath),
+    faucetConfigured: faucetConfigured(),
   });
 });
 
@@ -97,6 +100,7 @@ app.use("/fixtures/:fixtureId", createMarketRoutes());
 app.use("/pools", createPoolRoutes());
 app.use("/pools", createChatRoutes());
 app.use("/users", createUserRoutes());
+app.use("/faucet", createFaucetRoutes());
 
 // pool group chat — no TxLINE dependency, works even without an API token
 app.get("/stream/chat", (req, res) => {

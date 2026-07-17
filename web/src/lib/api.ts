@@ -3,6 +3,7 @@ import type {
   ClaimTxResponse,
   CreatePoolResponse,
   EnterPoolResponse,
+  FaucetResponse,
   HealthResponse,
   OddtasyFixture,
   PoolDetailResponse,
@@ -146,6 +147,13 @@ export const api = {
     request<{ ok: boolean }>(`/pools/${poolId}/tx`, {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+
+  /** Drip test USDC + a little SOL to a wallet (once per wallet, server-enforced). */
+  faucet: (wallet: string) =>
+    request<FaucetResponse>("/faucet", {
+      method: "POST",
+      body: JSON.stringify({ wallet }),
     }),
 
   getUser: (wallet: string) => request<UserProfile>(`/users/${wallet}`),

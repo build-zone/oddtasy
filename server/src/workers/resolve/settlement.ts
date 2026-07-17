@@ -48,6 +48,8 @@ export const MARKET = {
   MATCH_RESULT: 0, // 1X2, outcome_count 3
   OVER_UNDER: 1, // outcome_count 2
   CORRECT_SCORE: 2, // folded exact-score grid; cap travels in market_param
+  BTTS: 3, // both teams to score; outcome_count 2 (0 no, 1 yes)
+  ODD_EVEN: 4, // odd/even total goals; outcome_count 2 (0 even, 1 odd)
 } as const;
 
 export interface Score {
@@ -70,6 +72,8 @@ export function correctScoreIndex(home: number, away: number, cap = DEFAULT_CS_C
  *                  Half-integer lines never push.
  *  - CORRECT_SCORE: folded (home,away) index. market_param is the cap
  *                   (4 => 0,1,2,3,4+).
+ *  - BTTS:          0 no, 1 yes. Yes iff both sides scored >=1.
+ *  - ODD_EVEN:      0 even, 1 odd, on total goals. 0-0 is even.
  */
 export function winningOutcome(marketType: number, marketParam: number, score: Score): number {
   switch (marketType) {
@@ -84,6 +88,10 @@ export function winningOutcome(marketType: number, marketParam: number, score: S
     }
     case MARKET.CORRECT_SCORE:
       return correctScoreIndex(score.home, score.away, marketParam > 0 ? marketParam : DEFAULT_CS_CAP);
+    case MARKET.BTTS:
+      return score.home >= 1 && score.away >= 1 ? 1 : 0;
+    case MARKET.ODD_EVEN:
+      return (score.home + score.away) % 2 === 1 ? 1 : 0;
     default:
       throw new Error(`unknown market_type ${marketType}`);
   }

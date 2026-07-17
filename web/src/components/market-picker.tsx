@@ -321,6 +321,53 @@ function TotalGoals({
   );
 }
 
+/* ---- binary markets (BTTS, odd/even): two labelled bars, reusing the WDL
+       segment styling. `order` lists predictions high-interest side first. ---- */
+function BinaryPicker({
+  market,
+  order,
+  selection,
+  onSelect,
+}: {
+  market: SocialMarket;
+  order: { prediction: number; cls: "home" | "away"; label: string }[];
+  selection: MarketSelection | null;
+  onSelect: (sel: MarketSelection) => void;
+}) {
+  const color = { home: "var(--home)", away: "var(--away)" };
+  return (
+    <div className="wdl">
+      {order.map((seg) => {
+        const option = market.options.find((o) => o.prediction === seg.prediction);
+        if (!option) return null;
+        const p = prob(option);
+        const sel = isSel(selection, market, option);
+        return (
+          <button
+            key={seg.prediction}
+            type="button"
+            className={`wdl-seg ${seg.cls} ${sel ? "sel" : ""}`}
+            onClick={() => onSelect({ market, option })}
+            aria-pressed={sel}
+            aria-label={`${seg.label} — ${pct(p)}, odds ${odds(option.decimalOdds)}`}
+          >
+            <span className="wdl-top">
+              <span className="wdl-lbl">{seg.label}</span>
+              <span className="wdl-pc">
+                {pct(p)}
+                <small>{odds(option.decimalOdds)}</small>
+              </span>
+            </span>
+            <span className="wdl-track">
+              <i style={{ width: pct(p), background: color[seg.cls] }} />
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---- correct score: the heat matrix. prediction = home*(cap+1)+away ---- */
 function CorrectScorePicker({
   market,
@@ -396,6 +443,8 @@ export function MarketPicker({
 }) {
   const matchResult = markets.find((m) => m.marketKey === "match_result");
   const overUnders = markets.filter((m) => m.marketKey === "over_under");
+  const btts = markets.find((m) => m.marketKey === "btts");
+  const oddEven = markets.find((m) => m.marketKey === "odd_even");
   const correctScore = markets.find((m) => m.marketKey === "correct_score");
 
   return (
@@ -416,6 +465,36 @@ export function MarketPicker({
 
       {overUnders.length > 0 && (
         <TotalGoals markets={overUnders} selection={selection} onSelect={onSelect} />
+      )}
+
+      {btts && (
+        <section>
+          <p className="k mb-2.5">Both teams to score</p>
+          <BinaryPicker
+            market={btts}
+            order={[
+              { prediction: 1, cls: "home", label: "Yes" },
+              { prediction: 0, cls: "away", label: "No" },
+            ]}
+            selection={selection}
+            onSelect={onSelect}
+          />
+        </section>
+      )}
+
+      {oddEven && (
+        <section>
+          <p className="k mb-2.5">Total goals odd / even</p>
+          <BinaryPicker
+            market={oddEven}
+            order={[
+              { prediction: 1, cls: "home", label: "Odd" },
+              { prediction: 0, cls: "away", label: "Even" },
+            ]}
+            selection={selection}
+            onSelect={onSelect}
+          />
+        </section>
       )}
 
       {correctScore && (

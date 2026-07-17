@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePools } from "@/hooks/use-queries";
 import { useProfile } from "@/hooks/use-profile";
 import { useBalances, useWallet } from "@/hooks/use-wallet";
+import { useFaucet } from "@/hooks/use-faucet";
 import { shortWallet, usdc } from "@/lib/format";
 import { MyResult } from "@/components/my-result";
 import type { PoolRecord } from "@/lib/types";
@@ -33,6 +34,7 @@ export default function MePage() {
   const wallet = useWallet();
   const toast = useToast();
   const { profile, update } = useProfile();
+  const faucet = useFaucet();
   const { data: balances } = useBalances(wallet.address);
   const { data: myPools } = usePools(
     wallet.address ? { wallet: wallet.address } : undefined,
@@ -74,6 +76,27 @@ export default function MePage() {
     }
     return { live, settled, won, net, unclaimed };
   }, [myPools]);
+
+  const copyAddress = () => {
+    if (!wallet.address) return;
+    void navigator.clipboard.writeText(wallet.address);
+    toast("Wallet address copied — send devnet USDC here.");
+  };
+
+  const grabUsdc = () => {
+    if (!wallet.address) return;
+    faucet.mutate(wallet.address, {
+      onSuccess: (res) => {
+        toast(
+          res.funded
+            ? `${res.usdc ?? 20} test USDC on the way — balance updates in a moment.`
+            : "You've already claimed your test USDC.",
+        );
+      },
+      onError: (e) =>
+        toast(e instanceof Error ? e.message : "Faucet unavailable — try the Circle faucet."),
+    });
+  };
 
   const saveName = () => {
     const trimmed = name.trim();
@@ -187,21 +210,48 @@ export default function MePage() {
             </span>
           </div>
         </div>
-        {balances && balances.usdc === 0 && (
-          <p className="font-mono text-[10.5px] text-faint leading-relaxed">
-            You&apos;ll need devnet USDC to bet — grab some from{" "}
+      </div>
+
+      {wallet.address && (
+        <div className="flex flex-col gap-3 bg-surface border border-line2 rounded-[14px] p-4 mb-5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="k">fund your wallet · devnet</span>
+            <span className="font-mono text-[11px] text-muted">
+              {balances ? balances.usdc.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"} USDC
+            </span>
+          </div>
+          <p className="text-[12.5px] text-muted leading-relaxed">
+            New wallets get <span className="text-ink font-semibold">20 test USDC</span> + a little SOL
+            for fees dropped in automatically. Need more? Grab some below, or send devnet USDC straight
+            to this address.
+          </p>
+          <button
+            onClick={copyAddress}
+            title="Click to copy"
+            className="w-full text-left bg-surface2 border border-line2 rounded-lg px-3 py-2.5 font-mono text-[11.5px] text-ink break-all hover:border-[#33564a] transition-colors cursor-pointer"
+          >
+            {wallet.address}
+            <span className="text-faint"> ⧉ copy</span>
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={grabUsdc}
+              disabled={faucet.isPending}
+              className="flex-1 font-mono text-[12px] font-semibold bg-home text-[#10100a] rounded-lg px-3.5 py-2.5 cursor-pointer transition-[filter] hover:brightness-105 disabled:bg-surface2 disabled:text-muted disabled:cursor-default"
+            >
+              {faucet.isPending ? "Sending…" : "Get 20 test USDC"}
+            </button>
             <a
               href="https://faucet.circle.com"
               target="_blank"
               rel="noreferrer"
-              className="text-home underline underline-offset-4"
+              className="flex-1 text-center font-mono text-[12px] font-semibold bg-surface2 border border-line2 text-ink rounded-lg px-3.5 py-2.5 hover:border-[#33564a] transition-colors"
             >
-              faucet.circle.com
-            </a>{" "}
-            (Solana devnet) and a little SOL from the devnet faucet for fees.
-          </p>
-        )}
-      </div>
+              Circle faucet ↗
+            </a>
+          </div>
+        </div>
+      )}
 
       {history.unclaimed > 0 && (
         <Link

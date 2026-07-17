@@ -65,7 +65,7 @@ export function associatedTokenAddress(owner: PublicKey, mint: PublicKey): Publi
 
 /** Idempotent ATA create — a no-op when the account already exists, so fresh
  * embedded wallets work without a separate setup step. */
-function createAtaIdempotentIx(
+export function createAtaIdempotentIx(
   payer: PublicKey,
   owner: PublicKey,
   mint: PublicKey,

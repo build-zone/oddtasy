@@ -93,6 +93,28 @@ function overUnder(totals: number[], line: number): { over: number; under: numbe
   return { over, under: 1 - over };
 }
 
+/**
+ * Both teams to score. "Yes" is every cell where BOTH sides score at least one
+ * (home>=1 AND away>=1); the tau-corrected 0-0/1-0/0-1/1-1 cells are exactly the
+ * low-scoring block this depends on, so it reads straight off the same matrix.
+ */
+function bothTeamsToScore(matrix: number[][]): { yes: number; no: number } {
+  let yes = 0;
+  for (let i = 1; i < matrix.length; i++) {
+    for (let j = 1; j < matrix[i]!.length; j++) yes += matrix[i]![j]!;
+  }
+  return { yes, no: 1 - yes };
+}
+
+/** Odd vs even total goals. 0 goals counts as even (standard bookmaker rule). */
+function oddEven(totals: number[]): { odd: number; even: number } {
+  let even = 0;
+  for (let totalGoals = 0; totalGoals < totals.length; totalGoals++) {
+    if (totalGoals % 2 === 0) even += totals[totalGoals]!;
+  }
+  return { even, odd: 1 - even };
+}
+
 function fairOdds(probability: number): number {
   return Number((1 / Math.max(probability, 1e-6)).toFixed(2));
 }
@@ -394,7 +416,35 @@ export function modelSocialMarkets(input: ModelInput): SocialMarket[] {
     dataNote: "Folded exact-score grid. Last row/column is the + bucket.",
   };
 
-  return [matchResult, ...overUnders, correctScore];
+  const btts = bothTeamsToScore(matrix);
+  const bttsMarket: SocialMarket = {
+    marketType: MARKET.BTTS,
+    marketKey: "btts",
+    label: "Both Teams To Score",
+    marketParam: 0,
+    outcomeCount: 2,
+    options: [
+      probabilityOption({ prediction: 0, key: "no", label: "No", probability: btts.no }),
+      probabilityOption({ prediction: 1, key: "yes", label: "Yes", probability: btts.yes }),
+    ],
+    dataNote: "Model-fair odds: 0 no (NG), 1 yes (GG). Settles on 90-minute goals.",
+  };
+
+  const oe = oddEven(totals);
+  const oddEvenMarket: SocialMarket = {
+    marketType: MARKET.ODD_EVEN,
+    marketKey: "odd_even",
+    label: "Total Goals Odd/Even",
+    marketParam: 0,
+    outcomeCount: 2,
+    options: [
+      probabilityOption({ prediction: 0, key: "even", label: "Even", probability: oe.even }),
+      probabilityOption({ prediction: 1, key: "odd", label: "Odd", probability: oe.odd }),
+    ],
+    dataNote: "Model-fair odds: 0 even, 1 odd. 0-0 counts as even. Settles on 90-minute goals.",
+  };
+
+  return [matchResult, ...overUnders, bttsMarket, oddEvenMarket, correctScore];
 }
 
 export function txlineSocialMarkets(markets: OddtasyMarket[], cap = config.correctScoreCap): SocialMarket[] {
@@ -438,6 +488,24 @@ export function blankSocialMarkets(cap = config.correctScoreCap): SocialMarket[]
           dataNote: "No TxLINE price or model lambda input was available.",
         }) satisfies SocialMarket,
     ),
+    {
+      marketType: MARKET.BTTS,
+      marketKey: "btts",
+      label: "Both Teams To Score",
+      marketParam: 0,
+      outcomeCount: 2,
+      options: [emptyOption(0, "no", "No"), emptyOption(1, "yes", "Yes")],
+      dataNote: "No TxLINE price or model lambda input was available.",
+    },
+    {
+      marketType: MARKET.ODD_EVEN,
+      marketKey: "odd_even",
+      label: "Total Goals Odd/Even",
+      marketParam: 0,
+      outcomeCount: 2,
+      options: [emptyOption(0, "even", "Even"), emptyOption(1, "odd", "Odd")],
+      dataNote: "No TxLINE price or model lambda input was available.",
+    },
     {
       marketType: MARKET.CORRECT_SCORE,
       marketKey: "correct_score",

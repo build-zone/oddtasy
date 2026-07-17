@@ -21,6 +21,8 @@ const MARKET_LABEL: Record<string, string> = {
   match_result: "Match result",
   over_under: "Over/Under",
   correct_score: "Correct score",
+  btts: "Both teams to score",
+  odd_even: "Total goals odd/even",
 };
 
 export default function PoolPage({

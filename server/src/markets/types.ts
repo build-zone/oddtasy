@@ -2,6 +2,8 @@ export const MARKET = {
   MATCH_RESULT: 0,
   OVER_UNDER: 1,
   CORRECT_SCORE: 2,
+  BTTS: 3,
+  ODD_EVEN: 4,
 } as const;
 
 export type MarketType = (typeof MARKET)[keyof typeof MARKET];
@@ -22,7 +24,7 @@ export type SocialOption = {
 
 export type SocialMarket = {
   marketType: MarketType;
-  marketKey: "match_result" | "over_under" | "correct_score";
+  marketKey: "match_result" | "over_under" | "correct_score" | "btts" | "odd_even";
   label: string;
   marketParam: number;
   outcomeCount: number;

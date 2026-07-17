@@ -33,6 +33,13 @@ export const config = {
   defaultMaxEntries: numberFromEnv("ODDTASY_DEFAULT_MAX_ENTRIES", 200),
   correctScoreCap: numberFromEnv("ODDTASY_CORRECT_SCORE_CAP", 4),
   /**
+   * Demo faucet: on first login the server drips this much test USDC + SOL
+   * (for fees) to the user's embedded wallet from ODDTASY_FAUCET_KEY(PAIR),
+   * so nobody has to hunt for a public devnet faucet before their first bet.
+   */
+  faucetUsdc: numberFromEnv("ODDTASY_FAUCET_USDC", 20),
+  faucetSol: numberFromEnv("ODDTASY_FAUCET_SOL", 0.02),
+  /**
    * Unlocks POST /pools/:id/dev/resolve, which finalizes a pool to a chosen
    * outcome without waiting on the TxLINE scores stream. Needed because the
    * feed only settles real matches, and there is no way to make Brazil score
