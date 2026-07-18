@@ -138,7 +138,10 @@ export default function FixturePage({
             live={fixture?.status === "live"}
             label={
               fixture?.status === "finished"
-                ? "FT"
+                ? // "finished" can be clock-derived with no score behind it
+                  homeScore != null && awayScore != null
+                  ? "FT"
+                  : "No result"
                 : fixture?.status === "live"
                   ? "Live"
                   : "Upcoming"

@@ -62,7 +62,8 @@ export function FixtureCard({ fixture }: { fixture: OddtasyFixture }) {
               finished
                 ? hasScore
                   ? `FT ${fixture.homeScore}–${fixture.awayScore}`
-                  : "FT"
+                  : // "finished" can be clock-derived with no score behind it
+                    "No result"
                 : live
                   ? "Live"
                   : "Upcoming"

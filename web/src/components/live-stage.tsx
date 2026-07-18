@@ -173,6 +173,10 @@ export function LiveStage({
     fixture?.awayScore ??
     null;
 
+  // The clock alone can mark a fixture "finished" (kickoff + 2.5h) even when the
+  // feed never carried a score for it. Only claim full time when we have the goals.
+  const resultKnown = homeScore != null && awayScore != null;
+
   // goal popups from real score changes
   const [pops, setPops] = useState<GoalPop[]>([]);
   const prevScore = useRef<[number, number] | null>(null);
@@ -278,7 +282,12 @@ export function LiveStage({
                 : phaseLabel}
             </div>
           )}
-          {fin && <div className="hud-min ft">✓ {phaseLabel || "FT"}</div>}
+          {fin &&
+            (resultKnown ? (
+              <div className="hud-min ft">✓ {phaseLabel || "FT"}</div>
+            ) : (
+              <div className="hud-min noresult">no result yet</div>
+            ))}
           {pre && (
             <div className="hud-min pre">
               ◷ KO{" "}
@@ -307,7 +316,7 @@ export function LiveStage({
             </div>
           </div>
         )}
-        {fin && homeScore != null && (
+        {fin && resultKnown && (
           <div className="stage-pre">
             <div className="cd-lbl">Full time</div>
             <div className="cd ft-score">
@@ -315,6 +324,16 @@ export function LiveStage({
             </div>
             <div className="cd-ko">
               {home} v {away}
+            </div>
+          </div>
+        )}
+        {fin && !resultKnown && (
+          <div className="stage-pre">
+            <div className="cd-lbl">Match over</div>
+            <div className="cd-noresult">No score for this match</div>
+            <div className="cd-ko">
+              Our data feed doesn&apos;t cover it, so this pool can&apos;t be settled
+              automatically. Nobody is paid until a result arrives.
             </div>
           </div>
         )}

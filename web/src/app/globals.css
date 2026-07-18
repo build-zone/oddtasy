@@ -347,6 +347,14 @@ body {
   font-family: var(--font-plex), ui-monospace, monospace; font-size: clamp(8px, 2.4cqi, 11px);
   color: #90a294; text-shadow: 0 1px 4px #000;
 }
+/* match over, no score in the feed — state the gap, don't dress it as a result */
+.stage-pre .cd-noresult {
+  font-family: var(--font-grotesk), system-ui, sans-serif; font-size: clamp(15px, 5cqi, 24px);
+  font-weight: 600; color: #cfe0d4; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  max-width: 34ch;
+}
+.stage-pre .cd-noresult + .cd-ko { max-width: 40ch; line-height: 1.5; }
+.hud-min.noresult { color: #cfe0d4; }
 
 /* goal / event popups — HTML chips over the SVG; positions are decorative */
 .stage-pop {

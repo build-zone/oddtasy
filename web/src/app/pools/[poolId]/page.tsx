@@ -183,6 +183,12 @@ export default function PoolPage({
   const pot = pool.stakeUsdc * pool.entryCount;
   const marketLabel = MARKET_LABEL[pool.marketKey] ?? pool.marketKey;
   const sealed = pool.status === "open";
+  // The match is over but the feed carried no score, so settlement can't run and
+  // the pool sits open/locked indefinitely. Say so instead of leaving it silent.
+  const awaitingResult =
+    (pool.status === "open" || pool.status === "locked") &&
+    fixture?.status === "finished" &&
+    (fixture.homeScore == null || fixture.awayScore == null);
   const winningOption = market?.options.find(
     (o) => o.prediction === pool.winningOutcome,
   );
@@ -300,7 +306,7 @@ export default function PoolPage({
         </section>
       )}
 
-      {pool.status === "open" && viewerEntry && viewerEntry.enterTxSignature && (
+      {pool.status === "open" && !awaitingResult && viewerEntry && viewerEntry.enterTxSignature && (
         <div className="bg-surface border border-line2 rounded-[14px] px-4 py-3.5 mb-6">
           <p className="m-0 font-semibold text-sm">
             You&apos;re in — <span className="text-home">{viewerEntry.optionLabel}</span>{" "}
@@ -334,7 +340,26 @@ export default function PoolPage({
         </div>
       )}
 
-      {pool.status === "locked" && (
+      {awaitingResult && (
+        <div className="bg-surface border border-[#4d3f1e] rounded-[14px] px-4 py-3.5 mb-6">
+          <p className="m-0 font-semibold text-sm">
+            Waiting on the final score
+            {viewerEntry ? (
+              <>
+                {" "}
+                — you picked <span className="text-home">{viewerEntry.optionLabel}</span>
+              </>
+            ) : null}
+          </p>
+          <p className="m-0 mt-1 font-mono text-[11px] text-faint">
+            The match is over, but our data feed never sent a score for it, so we
+            can&apos;t say who won yet. Nobody is paid until it does — your{" "}
+            {usdc(pool.stakeUsdc)} is still in the pool.
+          </p>
+        </div>
+      )}
+
+      {pool.status === "locked" && !awaitingResult && (
         <div className="bg-surface border border-line2 rounded-[14px] px-4 py-3.5 mb-6">
           <p className="m-0 font-semibold text-sm">
             <span className="livedot" aria-hidden />
