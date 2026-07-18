@@ -33,7 +33,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${grotesk.variable} ${plex.variable} antialiased`}>
+      {/* extensions inject attrs on <body> pre-hydration; suppress is shallow, children still checked */}
+      <body
+        className={`${grotesk.variable} ${plex.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <Providers>
           {/* pb clears the fixed BottomNav + the iOS home indicator */}
           <div className="max-w-[680px] mx-auto px-4 pb-[calc(76px+env(safe-area-inset-bottom,0px))]">
